@@ -5,7 +5,8 @@ import {
   ScrollView, 
   TouchableOpacity, 
   StyleSheet,
-  Alert
+  Alert,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -17,6 +18,8 @@ import { RecipeCard } from '@/components/RecipeCard';
 import { geminiService, Recipe } from '@/services/geminiService';
 import { foodLogService } from '@/services/foodLogService';
 import { useAuth } from '@/hooks/useAuth';
+
+const { width } = Dimensions.get('window');
 
 export default function DashboardScreen() {
   const { user } = useAuth();
@@ -117,47 +120,47 @@ export default function DashboardScreen() {
           </View>
         </MinimalCard>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
+        {/* Primary Actions */}
+        <View style={styles.primaryActions}>
           <TouchableOpacity 
-            style={zaraStyles.button} 
+            style={[styles.primaryButton, styles.scanButton]} 
             onPress={() => router.push('/scanner')}
           >
             <ScanLine size={20} color={ZaraTheme.colors.white} strokeWidth={1.5} />
-            <Text style={[zaraStyles.buttonText, { marginLeft: ZaraTheme.spacing.sm }]}>
+            <Text style={[styles.primaryButtonText, { marginLeft: ZaraTheme.spacing.sm }]}>
               SCAN FOOD
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[zaraStyles.buttonOutline, { marginLeft: ZaraTheme.spacing.md }]}
+            style={[styles.primaryButton, styles.addButton]}
             onPress={() => router.push('/add-grocery')}
           >
             <Plus size={20} color={ZaraTheme.colors.black} strokeWidth={1.5} />
-            <Text style={[zaraStyles.buttonTextOutline, { marginLeft: ZaraTheme.spacing.sm }]}>
+            <Text style={[styles.primaryButtonTextOutline, { marginLeft: ZaraTheme.spacing.sm }]}>
               ADD GROCERY
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Additional Actions */}
-        <View style={styles.additionalActions}>
+        {/* Secondary Actions */}
+        <View style={styles.secondaryActions}>
           <TouchableOpacity 
-            style={[zaraStyles.buttonOutline, styles.actionButton]}
+            style={styles.secondaryButton}
             onPress={() => router.push('/calendar')}
           >
             <Calendar size={20} color={ZaraTheme.colors.black} strokeWidth={1.5} />
-            <Text style={[zaraStyles.buttonTextOutline, { marginLeft: ZaraTheme.spacing.sm }]}>
+            <Text style={[styles.secondaryButtonText, { marginLeft: ZaraTheme.spacing.sm }]}>
               CALENDAR
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[zaraStyles.buttonOutline, styles.actionButton]}
+            style={styles.secondaryButton}
             onPress={() => router.push('/meal-planner')}
           >
             <ChefHat size={20} color={ZaraTheme.colors.black} strokeWidth={1.5} />
-            <Text style={[zaraStyles.buttonTextOutline, { marginLeft: ZaraTheme.spacing.sm }]}>
+            <Text style={[styles.secondaryButtonText, { marginLeft: ZaraTheme.spacing.sm }]}>
               MEAL PLAN
             </Text>
           </TouchableOpacity>
@@ -267,18 +270,61 @@ const styles = StyleSheet.create({
     ...ZaraTheme.typography.caption,
     color: ZaraTheme.colors.mediumGray,
   },
-  quickActions: {
+  primaryActions: {
     flexDirection: 'row',
     marginBottom: ZaraTheme.spacing.lg,
+    gap: ZaraTheme.spacing.md,
   },
-  additionalActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: ZaraTheme.spacing.lg,
-  },
-  actionButton: {
+  primaryButton: {
     flex: 1,
-    marginHorizontal: ZaraTheme.spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: ZaraTheme.spacing.md,
+    paddingHorizontal: ZaraTheme.spacing.md,
+    minHeight: 48,
+  },
+  scanButton: {
+    backgroundColor: ZaraTheme.colors.black,
+    borderWidth: 1,
+    borderColor: ZaraTheme.colors.black,
+  },
+  addButton: {
+    backgroundColor: ZaraTheme.colors.white,
+    borderWidth: 1,
+    borderColor: ZaraTheme.colors.black,
+  },
+  primaryButtonText: {
+    ...ZaraTheme.typography.button,
+    color: ZaraTheme.colors.white,
+    fontSize: width < 375 ? 12 : 14,
+  },
+  primaryButtonTextOutline: {
+    ...ZaraTheme.typography.button,
+    color: ZaraTheme.colors.black,
+    fontSize: width < 375 ? 12 : 14,
+  },
+  secondaryActions: {
+    flexDirection: 'row',
+    marginBottom: ZaraTheme.spacing.lg,
+    gap: ZaraTheme.spacing.md,
+  },
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: ZaraTheme.spacing.md,
+    paddingHorizontal: ZaraTheme.spacing.sm,
+    backgroundColor: ZaraTheme.colors.white,
+    borderWidth: 1,
+    borderColor: ZaraTheme.colors.black,
+    minHeight: 48,
+  },
+  secondaryButtonText: {
+    ...ZaraTheme.typography.button,
+    color: ZaraTheme.colors.black,
+    fontSize: width < 375 ? 12 : 14,
   },
   section: {
     marginBottom: ZaraTheme.spacing.xl,
