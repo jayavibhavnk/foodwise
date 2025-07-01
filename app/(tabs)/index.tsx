@@ -9,42 +9,45 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ScanLine, Plus, TrendingUp } from 'lucide-react-native';
+import { ScanLine, Plus, Calendar, ChefHat } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { zaraStyles, ZaraTheme } from '@/styles/zaraTheme';
 import { MinimalCard } from '@/components/MinimalCard';
 import { RecipeCard } from '@/components/RecipeCard';
-import { BoltBadge } from '@/components/BoltBadge';
 import { geminiService, Recipe } from '@/services/geminiService';
-
-interface DayStats {
-  consumedCalories: number;
-  dailyGoal: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
+import { foodLogService } from '@/services/foodLogService';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function DashboardScreen() {
-  const [todayStats, setTodayStats] = useState<DayStats>({
-    consumedCalories: 1247,
-    dailyGoal: 2000,
-    protein: 65,
-    carbs: 140,
-    fat: 45,
+  const { user } = useAuth();
+  const [todayStats, setTodayStats] = useState({
+    consumedCalories: 0,
+    dailyGoal: user?.dailyCalorieGoal || 2000,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
   });
-  
-  const [pantryAlerts, setPantryAlerts] = useState([
-    'Tomatoes expire in 2 days',
-    'Yogurt expires today',
-  ]);
   
   const [suggestedRecipes, setSuggestedRecipes] = useState<Recipe[]>([]);
   const [loadingRecipes, setLoadingRecipes] = useState(false);
 
   useEffect(() => {
+    loadTodayStats();
     loadSuggestedRecipes();
   }, []);
+
+  const loadTodayStats = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const dailyLog = await foodLogService.getDailyLog(today);
+    
+    setTodayStats({
+      consumedCalories: dailyLog.totalCalories,
+      dailyGoal: user?.dailyCalorieGoal || 2000,
+      protein: dailyLog.totalProtein,
+      carbs: dailyLog.totalCarbs,
+      fat: dailyLog.totalFat,
+    });
+  };
 
   const loadSuggestedRecipes = async () => {
     if (!geminiService.isInitialized()) {
@@ -68,9 +71,6 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={zaraStyles.safeArea}>
-      {/* Bolt.new Badge - Required for hackathon */}
-      <BoltBadge variant="light" position="topRight" />
-      
       <ScrollView style={zaraStyles.container} showsVerticalScrollIndicator={false}>
         <View style={zaraStyles.header}>
           <Text style={zaraStyles.title}>FOODWISE</Text>
@@ -131,7 +131,7 @@ export default function DashboardScreen() {
           
           <TouchableOpacity 
             style={[zaraStyles.buttonOutline, { marginLeft: ZaraTheme.spacing.md }]}
-            onPress={() => router.push('/pantry')}
+            onPress={() => router.push('/add-grocery')}
           >
             <Plus size={20} color={ZaraTheme.colors.black} strokeWidth={1.5} />
             <Text style={[zaraStyles.buttonTextOutline, { marginLeft: ZaraTheme.spacing.sm }]}>
@@ -140,18 +140,28 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Pantry Alerts */}
-        {pantryAlerts.length > 0 && (
-          <MinimalCard>
-            <Text style={styles.sectionTitle}>PANTRY ALERTS</Text>
-            {pantryAlerts.map((alert, index) => (
-              <View key={index} style={styles.alertItem}>
-                <TrendingUp size={16} color={ZaraTheme.colors.black} strokeWidth={1.5} />
-                <Text style={styles.alertText}>{alert}</Text>
-              </View>
-            ))}
-          </MinimalCard>
-        )}
+        {/* Additional Actions */}
+        <View style={styles.additionalActions}>
+          <TouchableOpacity 
+            style={[zaraStyles.buttonOutline, styles.actionButton]}
+            onPress={() => router.push('/calendar')}
+          >
+            <Calendar size={20} color={ZaraTheme.colors.black} strokeWidth={1.5} />
+            <Text style={[zaraStyles.buttonTextOutline, { marginLeft: ZaraTheme.spacing.sm }]}>
+              CALENDAR
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[zaraStyles.buttonOutline, styles.actionButton]}
+            onPress={() => router.push('/meal-planner')}
+          >
+            <ChefHat size={20} color={ZaraTheme.colors.black} strokeWidth={1.5} />
+            <Text style={[zaraStyles.buttonTextOutline, { marginLeft: ZaraTheme.spacing.sm }]}>
+              MEAL PLAN
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Recipe Suggestions */}
         <View style={styles.section}>
@@ -261,15 +271,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: ZaraTheme.spacing.lg,
   },
-  alertItem: {
+  additionalActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: ZaraTheme.spacing.sm,
+    justifyContent: 'space-between',
+    marginBottom: ZaraTheme.spacing.lg,
   },
-  alertText: {
-    ...ZaraTheme.typography.bodySmall,
-    marginLeft: ZaraTheme.spacing.sm,
+  actionButton: {
     flex: 1,
+    marginHorizontal: ZaraTheme.spacing.xs,
   },
   section: {
     marginBottom: ZaraTheme.spacing.xl,

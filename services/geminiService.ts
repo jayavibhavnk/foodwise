@@ -189,6 +189,57 @@ class GeminiService {
     }
   }
 
+  async generateMealPlan(prompt: string): Promise<any> {
+    if (!this.genAI) {
+      throw new Error('Gemini API not initialized. Please configure your API key in settings.');
+    }
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      
+      // Extract JSON from response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+      
+      return JSON.parse(jsonMatch[0]);
+    } catch (error) {
+      throw new Error(`Meal plan generation failed: ${error}`);
+    }
+  }
+
+  async searchFoodNutrition(foodName: string): Promise<NutritionInfo> {
+    if (!this.genAI) {
+      throw new Error('Gemini API not initialized. Please configure your API key in settings.');
+    }
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      
+      const prompt = `
+        Provide nutritional information for "${foodName}" in JSON format.
+        Assume a standard serving size and provide accurate nutritional data.
+        
+        Return ONLY valid JSON in this exact format:
+        {
+          "foods": [{"name": "${foodName}", "quantity": "1 serving", "calories": 150, "protein": 10, "carbs": 20, "fat": 5}],
+          "totalCalories": 150,
+          "nutritionalScore": 75,
+          "healthTips": ["tip1", "tip2"]
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      return this.parseNutritionalResponse(responseText);
+    } catch (error) {
+      throw new Error(`Food search failed: ${error}`);
+    }
+  }
+
   private parseNutritionalResponse(responseText: string): NutritionInfo {
     try {
       // Extract JSON from response

@@ -1,19 +1,29 @@
 import React, { useState } from 'react';
-import { View, Text, Alert, StyleSheet } from 'react-native';
+import { View, Text, Alert, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { Plus } from 'lucide-react-native';
 import { zaraStyles, ZaraTheme } from '@/styles/zaraTheme';
 import { FoodScanner } from '@/components/FoodScanner';
 import { MinimalCard } from '@/components/MinimalCard';
 import { NutritionInfo } from '@/services/geminiService';
+import { foodLogService } from '@/services/foodLogService';
+
+const MEAL_TYPES = [
+  { key: 'breakfast', label: 'Breakfast' },
+  { key: 'lunch', label: 'Lunch' },
+  { key: 'dinner', label: 'Dinner' },
+  { key: 'snack', label: 'Snack' },
+];
 
 export default function ScannerScreen() {
   const [lastScan, setLastScan] = useState<NutritionInfo | null>(null);
+  const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('lunch');
 
   const handleFoodAnalyzed = (analysis: NutritionInfo) => {
     setLastScan(analysis);
     
-    // Show analysis results
+    // Show analysis results with option to add to log
     Alert.alert(
       'Food Analysis Complete',
       `Found ${analysis.foods.length} food items with ${analysis.totalCalories} total calories`,
@@ -22,14 +32,40 @@ export default function ScannerScreen() {
         { 
           text: 'Add to Log', 
           style: 'default',
-          onPress: () => {
-            // In a real app, this would save to the user's food log
-            Alert.alert('Success', 'Food added to your daily log!');
-            router.push('/');
-          }
+          onPress: () => addToFoodLog(analysis)
         }
       ]
     );
+  };
+
+  const addToFoodLog = async (analysis: NutritionInfo) => {
+    if (analysis.foods.length === 0) {
+      Alert.alert('Error', 'No food items to add');
+      return;
+    }
+
+    try {
+      // Add each food item to the log
+      for (const food of analysis.foods) {
+        await foodLogService.addFoodEntry({
+          name: food.name,
+          quantity: food.quantity,
+          calories: food.calories,
+          protein: food.protein,
+          carbs: food.carbs,
+          fat: food.fat,
+          mealType: selectedMealType,
+        });
+      }
+
+      Alert.alert(
+        'Success', 
+        'Food added to your daily log!',
+        [{ text: 'OK', onPress: () => router.push('/') }]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add food to log');
+    }
   };
 
   return (
@@ -40,6 +76,30 @@ export default function ScannerScreen() {
           <Text style={zaraStyles.subtitle}>
             Scan food to track calories and nutrition
           </Text>
+        </View>
+
+        {/* Meal Type Selector */}
+        <View style={styles.mealTypeSelector}>
+          <Text style={styles.mealTypeLabel}>MEAL TYPE</Text>
+          <View style={styles.mealTypeButtons}>
+            {MEAL_TYPES.map((meal) => (
+              <TouchableOpacity
+                key={meal.key}
+                style={[
+                  styles.mealTypeButton,
+                  selectedMealType === meal.key && styles.mealTypeButtonSelected
+                ]}
+                onPress={() => setSelectedMealType(meal.key as any)}
+              >
+                <Text style={[
+                  styles.mealTypeText,
+                  selectedMealType === meal.key && styles.mealTypeTextSelected
+                ]}>
+                  {meal.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <View style={styles.scannerContainer}>
@@ -69,6 +129,16 @@ export default function ScannerScreen() {
                 ))}
               </View>
 
+              <TouchableOpacity 
+                style={[zaraStyles.button, { marginTop: ZaraTheme.spacing.md }]}
+                onPress={() => addToFoodLog(lastScan)}
+              >
+                <Plus size={20} color={ZaraTheme.colors.white} strokeWidth={1.5} />
+                <Text style={[zaraStyles.buttonText, { marginLeft: ZaraTheme.spacing.sm }]}>
+                  ADD TO {selectedMealType.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+
               {lastScan.healthTips.length > 0 && (
                 <View style={styles.tips}>
                   <Text style={styles.tipsTitle}>HEALTH TIPS</Text>
@@ -82,6 +152,19 @@ export default function ScannerScreen() {
             </MinimalCard>
           </View>
         )}
+
+        {/* Manual Add Option */}
+        <View style={styles.manualAddContainer}>
+          <TouchableOpacity 
+            style={zaraStyles.buttonOutline}
+            onPress={() => router.push('/add-food')}
+          >
+            <Plus size={20} color={ZaraTheme.colors.black} strokeWidth={1.5} />
+            <Text style={[zaraStyles.buttonTextOutline, { marginLeft: ZaraTheme.spacing.sm }]}>
+              ADD FOOD MANUALLY
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -91,6 +174,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: ZaraTheme.colors.white,
+  },
+  mealTypeSelector: {
+    paddingHorizontal: ZaraTheme.spacing.md,
+    marginBottom: ZaraTheme.spacing.md,
+  },
+  mealTypeLabel: {
+    ...ZaraTheme.typography.caption,
+    marginBottom: ZaraTheme.spacing.sm,
+    color: ZaraTheme.colors.black,
+  },
+  mealTypeButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  mealTypeButton: {
+    borderWidth: 1,
+    borderColor: ZaraTheme.colors.lightGray,
+    paddingHorizontal: ZaraTheme.spacing.md,
+    paddingVertical: ZaraTheme.spacing.sm,
+    marginRight: ZaraTheme.spacing.sm,
+    marginBottom: ZaraTheme.spacing.sm,
+  },
+  mealTypeButtonSelected: {
+    borderColor: ZaraTheme.colors.black,
+    backgroundColor: ZaraTheme.colors.black,
+  },
+  mealTypeText: {
+    ...ZaraTheme.typography.caption,
+    color: ZaraTheme.colors.black,
+  },
+  mealTypeTextSelected: {
+    color: ZaraTheme.colors.white,
   },
   scannerContainer: {
     flex: 1,
@@ -136,7 +251,7 @@ const styles = StyleSheet.create({
     color: ZaraTheme.colors.mediumGray,
   },
   tips: {
-    marginTop: ZaraTheme.spacing.md,
+    marginTop: ZaraTheme.spacing.lg,
   },
   tipsTitle: {
     ...ZaraTheme.typography.caption,
@@ -147,5 +262,9 @@ const styles = StyleSheet.create({
     ...ZaraTheme.typography.bodySmall,
     color: ZaraTheme.colors.mediumGray,
     marginBottom: ZaraTheme.spacing.xs,
+  },
+  manualAddContainer: {
+    paddingHorizontal: ZaraTheme.spacing.md,
+    paddingBottom: ZaraTheme.spacing.md,
   },
 });
