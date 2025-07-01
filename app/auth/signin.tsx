@@ -85,6 +85,13 @@ export default function SignInScreen() {
           </View>
 
           <TouchableOpacity 
+            style={styles.forgotPassword}
+            onPress={() => router.push('/auth/forgot-password')}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
             style={[zaraStyles.button, { marginTop: ZaraTheme.spacing.xl }]}
             onPress={handleSignIn}
             disabled={loading}
@@ -126,6 +133,15 @@ const styles = StyleSheet.create({
     ...ZaraTheme.typography.caption,
     marginBottom: ZaraTheme.spacing.sm,
     color: ZaraTheme.colors.black,
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginTop: ZaraTheme.spacing.sm,
+  },
+  forgotPasswordText: {
+    ...ZaraTheme.typography.caption,
+    color: ZaraTheme.colors.mediumGray,
+    textDecorationLine: 'underline',
   },
   footer: {
     flexDirection: 'row',

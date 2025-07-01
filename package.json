@@ -46,7 +46,8 @@
     "react-native-webview": "13.13.5",
     "date-fns": "^4.1.0",
     "expo-secure-store": "~14.1.1",
-    "expo-crypto": "~14.1.1"
+    "expo-crypto": "~14.1.1",
+    "react-native-calendars": "^1.1306.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

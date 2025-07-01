@@ -12,47 +12,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { zaraStyles, ZaraTheme } from '@/styles/zaraTheme';
-import { useAuth } from '@/hooks/useAuth';
+import { authService } from '@/services/authService';
 
-export default function SignUpScreen() {
-  const [name, setName] = useState('');
+export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signUp } = useAuth();
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const handleSignUp = async () => {
-    if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    if (!validateEmail(email.trim())) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+  const handleResetPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter your email address');
       return;
     }
 
     setLoading(true);
     try {
-      const result = await signUp(email.trim(), password, name.trim());
-      if (!result.success) {
-        Alert.alert('Sign Up Failed', result.error || 'Failed to create account');
+      const result = await authService.resetPassword(email.trim());
+      if (result.success) {
+        Alert.alert(
+          'Reset Link Sent',
+          'If an account with this email exists, you will receive a password reset link.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      } else {
+        Alert.alert('Error', result.error || 'Failed to send reset link');
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred');
@@ -72,25 +54,13 @@ export default function SignUpScreen() {
         </TouchableOpacity>
 
         <View style={styles.header}>
-          <Text style={zaraStyles.title}>CREATE ACCOUNT</Text>
+          <Text style={zaraStyles.title}>RESET PASSWORD</Text>
           <Text style={zaraStyles.subtitle}>
-            Join FoodWise today
+            Enter your email to receive a reset link
           </Text>
         </View>
 
         <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>FULL NAME</Text>
-            <TextInput
-              style={zaraStyles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Enter your full name"
-              placeholderTextColor={ZaraTheme.colors.mediumGray}
-              autoCapitalize="words"
-            />
-          </View>
-
           <View style={styles.inputGroup}>
             <Text style={styles.label}>EMAIL</Text>
             <TextInput
@@ -105,46 +75,20 @@ export default function SignUpScreen() {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>PASSWORD</Text>
-            <TextInput
-              style={zaraStyles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Create a password"
-              placeholderTextColor={ZaraTheme.colors.mediumGray}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>CONFIRM PASSWORD</Text>
-            <TextInput
-              style={zaraStyles.input}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Confirm your password"
-              placeholderTextColor={ZaraTheme.colors.mediumGray}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-          </View>
-
           <TouchableOpacity 
             style={[zaraStyles.button, { marginTop: ZaraTheme.spacing.xl }]}
-            onPress={handleSignUp}
+            onPress={handleResetPassword}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator size="small" color={ZaraTheme.colors.white} />
             ) : (
-              <Text style={zaraStyles.buttonText}>CREATE ACCOUNT</Text>
+              <Text style={zaraStyles.buttonText}>SEND RESET LINK</Text>
             )}
           </TouchableOpacity>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
+            <Text style={styles.footerText}>Remember your password? </Text>
             <TouchableOpacity onPress={() => router.push('/auth/signin')}>
               <Text style={styles.linkText}>Sign in</Text>
             </TouchableOpacity>

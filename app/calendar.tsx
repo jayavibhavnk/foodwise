@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Calendar } from 'react-native-calendars';
 import { LineChart } from 'react-native-chart-kit';
 import { format, startOfWeek, addDays, subWeeks, addWeeks, isSameDay } from 'date-fns';
 import { zaraStyles, ZaraTheme } from '@/styles/zaraTheme';
@@ -25,6 +26,7 @@ export default function CalendarScreen() {
   const [weeklyLogs, setWeeklyLogs] = useState<DailyLog[]>([]);
   const [selectedDay, setSelectedDay] = useState<DailyLog | null>(null);
   const [loading, setLoading] = useState(true);
+  const [markedDates, setMarkedDates] = useState({});
 
   useEffect(() => {
     loadWeeklyData();
@@ -40,6 +42,30 @@ export default function CalendarScreen() {
       const today = new Date();
       const todayLog = logs.find(log => isSameDay(new Date(log.date), today));
       setSelectedDay(todayLog || logs[0]);
+
+      // Create marked dates for calendar
+      const marked = {};
+      logs.forEach(log => {
+        if (log.totalCalories > 0) {
+          const progress = Math.min(1, log.totalCalories / (user?.dailyCalorieGoal || 2000));
+          let color = ZaraTheme.colors.lightGray;
+          
+          if (progress >= 0.8) {
+            color = ZaraTheme.colors.black;
+          } else if (progress >= 0.5) {
+            color = ZaraTheme.colors.darkGray;
+          } else if (progress > 0) {
+            color = ZaraTheme.colors.mediumGray;
+          }
+
+          marked[log.date] = {
+            marked: true,
+            dotColor: color,
+            selectedColor: color,
+          };
+        }
+      });
+      setMarkedDates(marked);
     } catch (error) {
       console.error('Failed to load weekly data:', error);
     } finally {
@@ -101,6 +127,45 @@ export default function CalendarScreen() {
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Calendar View */}
+          <MinimalCard>
+            <Text style={styles.sectionTitle}>MONTHLY OVERVIEW</Text>
+            <Calendar
+              current={new Date().toISOString().split('T')[0]}
+              onDayPress={(day) => {
+                const dayLog = weeklyLogs.find(log => log.date === day.dateString);
+                if (dayLog) {
+                  setSelectedDay(dayLog);
+                }
+              }}
+              markedDates={markedDates}
+              theme={{
+                backgroundColor: ZaraTheme.colors.white,
+                calendarBackground: ZaraTheme.colors.white,
+                textSectionTitleColor: ZaraTheme.colors.black,
+                selectedDayBackgroundColor: ZaraTheme.colors.black,
+                selectedDayTextColor: ZaraTheme.colors.white,
+                todayTextColor: ZaraTheme.colors.black,
+                dayTextColor: ZaraTheme.colors.black,
+                textDisabledColor: ZaraTheme.colors.lightGray,
+                dotColor: ZaraTheme.colors.black,
+                selectedDotColor: ZaraTheme.colors.white,
+                arrowColor: ZaraTheme.colors.black,
+                monthTextColor: ZaraTheme.colors.black,
+                indicatorColor: ZaraTheme.colors.black,
+                textDayFontFamily: 'System',
+                textMonthFontFamily: 'System',
+                textDayHeaderFontFamily: 'System',
+                textDayFontWeight: '300',
+                textMonthFontWeight: '300',
+                textDayHeaderFontWeight: '300',
+                textDayFontSize: 16,
+                textMonthFontSize: 16,
+                textDayHeaderFontSize: 13,
+              }}
+            />
+          </MinimalCard>
+
           {/* Week Navigation */}
           <View style={styles.weekNavigation}>
             <TouchableOpacity onPress={() => navigateWeek('prev')}>
