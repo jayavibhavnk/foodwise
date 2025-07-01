@@ -1,216 +1,226 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
   StyleSheet,
-  Alert,
-  Dimensions
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { ScanLine, Plus, Calendar, ChefHat } from 'lucide-react-native';
-import { format } from 'date-fns';
-import { zaraStyles, ZaraTheme } from '@/styles/zaraTheme';
-import { MinimalCard } from '@/components/MinimalCard';
-import { RecipeCard } from '@/components/RecipeCard';
-import { geminiService, Recipe } from '@/services/geminiService';
-import { foodLogService } from '@/services/foodLogService';
 import { useAuth } from '@/hooks/useAuth';
+import { foodLogService } from '@/services/foodLogService';
+import { mealPlanService } from '@/services/mealPlanService';
+import { Calendar, Plus, Target, TrendingUp } from 'lucide-react-native';
+import { router } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
-export default function DashboardScreen() {
+interface DailyStats {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export default function HomeScreen() {
   const { user } = useAuth();
-  const [todayStats, setTodayStats] = useState({
-    consumedCalories: 0,
-    dailyGoal: user?.dailyCalorieGoal || 2000,
+  const [todayStats, setTodayStats] = useState<DailyStats>({
+    calories: 0,
     protein: 0,
     carbs: 0,
     fat: 0,
   });
-  
-  const [suggestedRecipes, setSuggestedRecipes] = useState<Recipe[]>([]);
-  const [loadingRecipes, setLoadingRecipes] = useState(false);
+  const [todayMeals, setTodayMeals] = useState<any[]>([]);
 
   useEffect(() => {
-    loadTodayStats();
-    loadSuggestedRecipes();
+    loadTodayData();
   }, []);
 
-  const loadTodayStats = async () => {
-    const today = new Date().toISOString().split('T')[0];
-    const dailyLog = await foodLogService.getDailyLog(today);
-    
-    setTodayStats({
-      consumedCalories: dailyLog.totalCalories,
-      dailyGoal: user?.dailyCalorieGoal || 2000,
-      protein: dailyLog.totalProtein,
-      carbs: dailyLog.totalCarbs,
-      fat: dailyLog.totalFat,
-    });
-  };
-
-  const loadSuggestedRecipes = async () => {
-    if (!geminiService.isInitialized()) {
-      return;
-    }
-
-    setLoadingRecipes(true);
+  const loadTodayData = async () => {
     try {
-      // Mock pantry ingredients for demo
-      const pantryIngredients = ['chicken breast', 'rice', 'broccoli', 'garlic', 'onion'];
-      const recipes = await geminiService.generateRecipes(pantryIngredients);
-      setSuggestedRecipes(recipes.slice(0, 2)); // Show only 2 recipes on dashboard
+      const today = new Date().toISOString().split('T')[0];
+      const meals = await foodLogService.getMealsForDate(today);
+      const stats = await foodLogService.getDailyStats(today);
+      
+      setTodayMeals(meals);
+      setTodayStats(stats);
     } catch (error) {
-      console.error('Failed to load recipes:', error);
-    } finally {
-      setLoadingRecipes(false);
+      console.error('Failed to load today data:', error);
     }
   };
 
-  const calorieProgress = (todayStats.consumedCalories / todayStats.dailyGoal) * 100;
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const getCalorieProgress = () => {
+    if (!user) return 0;
+    return Math.min((todayStats.calories / user.dailyCalorieGoal) * 100, 100);
+  };
+
+  const getMacroProgress = (current: number, goal: number) => {
+    return Math.min((current / goal) * 100, 100);
+  };
 
   return (
-    <SafeAreaView style={zaraStyles.safeArea}>
-      <ScrollView style={zaraStyles.container} showsVerticalScrollIndicator={false}>
-        <View style={zaraStyles.header}>
-          <Text style={zaraStyles.title}>FOODWISE</Text>
-          <Text style={zaraStyles.subtitle}>
-            {format(new Date(), 'EEEE, MMMM do')}
-          </Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>{getGreeting()},</Text>
+            <Text style={styles.userName}>{user?.name || 'User'}!</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.calendarButton}
+            onPress={() => router.push('/calendar')}
+          >
+            <Calendar size={24} color="#007AFF" />
+          </TouchableOpacity>
         </View>
 
-        {/* Calorie Progress */}
-        <MinimalCard style={styles.progressCard}>
-          <Text style={styles.sectionTitle}>TODAY'S INTAKE</Text>
-          <View style={styles.calorieStats}>
-            <View style={styles.calorieMain}>
-              <Text style={styles.calorieNumber}>
-                {todayStats.consumedCalories}
-              </Text>
-              <Text style={styles.calorieGoal}>
-                / {todayStats.dailyGoal} cal
+        {/* Quick Stats */}
+        <View style={styles.statsContainer}>
+          <Text style={styles.sectionTitle}>Today's Progress</Text>
+          
+          {/* Calorie Progress */}
+          <View style={styles.calorieCard}>
+            <View style={styles.calorieHeader}>
+              <Text style={styles.calorieTitle}>Calories</Text>
+              <Text style={styles.calorieCount}>
+                {todayStats.calories} / {user?.dailyCalorieGoal || 2000}
               </Text>
             </View>
             <View style={styles.progressBar}>
               <View 
                 style={[
                   styles.progressFill, 
-                  { width: `${Math.min(calorieProgress, 100)}%` }
+                  { width: `${getCalorieProgress()}%` }
                 ]} 
               />
             </View>
+            <Text style={styles.progressText}>
+              {Math.round(getCalorieProgress())}% of daily goal
+            </Text>
           </View>
-          
-          <View style={styles.macros}>
-            <View style={styles.macroItem}>
-              <Text style={styles.macroValue}>{todayStats.protein}g</Text>
-              <Text style={styles.macroLabel}>PROTEIN</Text>
-            </View>
-            <View style={styles.macroItem}>
-              <Text style={styles.macroValue}>{todayStats.carbs}g</Text>
-              <Text style={styles.macroLabel}>CARBS</Text>
-            </View>
-            <View style={styles.macroItem}>
-              <Text style={styles.macroValue}>{todayStats.fat}g</Text>
-              <Text style={styles.macroLabel}>FAT</Text>
-            </View>
-          </View>
-        </MinimalCard>
 
-        {/* Primary Actions */}
-        <View style={styles.primaryActions}>
-          <TouchableOpacity 
-            style={[styles.primaryButton, styles.scanButton]} 
-            onPress={() => router.push('/scanner')}
-          >
-            <ScanLine size={20} color={ZaraTheme.colors.white} strokeWidth={1.5} />
-            <Text style={[styles.primaryButtonText, { marginLeft: ZaraTheme.spacing.sm }]}>
-              SCAN FOOD
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.primaryButton, styles.addButton]}
-            onPress={() => router.push('/add-grocery')}
-          >
-            <Plus size={20} color={ZaraTheme.colors.black} strokeWidth={1.5} />
-            <Text style={[styles.primaryButtonTextOutline, { marginLeft: ZaraTheme.spacing.sm }]}>
-              ADD GROCERY
-            </Text>
-          </TouchableOpacity>
+          {/* Macro Progress */}
+          <View style={styles.macroContainer}>
+            <View style={styles.macroItem}>
+              <Text style={styles.macroLabel}>Protein</Text>
+              <Text style={styles.macroValue}>
+                {Math.round(todayStats.protein)}g
+              </Text>
+              <View style={styles.macroBar}>
+                <View 
+                  style={[
+                    styles.macroFill, 
+                    { 
+                      width: `${getMacroProgress(todayStats.protein, user?.proteinGoal || 150)}%`,
+                      backgroundColor: '#FF6B6B'
+                    }
+                  ]} 
+                />
+              </View>
+            </View>
+            
+            <View style={styles.macroItem}>
+              <Text style={styles.macroLabel}>Carbs</Text>
+              <Text style={styles.macroValue}>
+                {Math.round(todayStats.carbs)}g
+              </Text>
+              <View style={styles.macroBar}>
+                <View 
+                  style={[
+                    styles.macroFill, 
+                    { 
+                      width: `${getMacroProgress(todayStats.carbs, user?.carbsGoal || 250)}%`,
+                      backgroundColor: '#4ECDC4'
+                    }
+                  ]} 
+                />
+              </View>
+            </View>
+            
+            <View style={styles.macroItem}>
+              <Text style={styles.macroLabel}>Fat</Text>
+              <Text style={styles.macroValue}>
+                {Math.round(todayStats.fat)}g
+              </Text>
+              <View style={styles.macroBar}>
+                <View 
+                  style={[
+                    styles.macroFill, 
+                    { 
+                      width: `${getMacroProgress(todayStats.fat, user?.fatGoal || 65)}%`,
+                      backgroundColor: '#FFE66D'
+                    }
+                  ]} 
+                />
+              </View>
+            </View>
+          </View>
         </View>
 
-        {/* Secondary Actions */}
-        <View style={styles.secondaryActions}>
-          <TouchableOpacity 
-            style={styles.secondaryButton}
-            onPress={() => router.push('/calendar')}
-          >
-            <Calendar size={20} color={ZaraTheme.colors.black} strokeWidth={1.5} />
-            <Text style={[styles.secondaryButtonText, { marginLeft: ZaraTheme.spacing.sm }]}>
-              CALENDAR
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.secondaryButton}
-            onPress={() => router.push('/meal-planner')}
-          >
-            <ChefHat size={20} color={ZaraTheme.colors.black} strokeWidth={1.5} />
-            <Text style={[styles.secondaryButtonText, { marginLeft: ZaraTheme.spacing.sm }]}>
-              MEAL PLAN
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Recipe Suggestions */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>SUGGESTED RECIPES</Text>
-            <TouchableOpacity onPress={() => router.push('/recipes')}>
-              <Text style={styles.seeAll}>SEE ALL</Text>
+        {/* Quick Actions */}
+        <View style={styles.actionsContainer}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionGrid}>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/add-food')}
+            >
+              <Plus size={24} color="#007AFF" />
+              <Text style={styles.actionText}>Log Food</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/meal-planner')}
+            >
+              <Target size={24} color="#007AFF" />
+              <Text style={styles.actionText}>Meal Plan</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/(tabs)/scanner')}
+            >
+              <TrendingUp size={24} color="#007AFF" />
+              <Text style={styles.actionText}>Scan Food</Text>
             </TouchableOpacity>
           </View>
-          
-          {!geminiService.isInitialized() ? (
-            <MinimalCard>
-              <Text style={styles.configureText}>
-                Configure Gemini AI in Settings to get personalized recipe suggestions
-              </Text>
-              <TouchableOpacity 
-                style={[zaraStyles.buttonOutline, { marginTop: ZaraTheme.spacing.md }]}
-                onPress={() => router.push('/settings')}
-              >
-                <Text style={zaraStyles.buttonTextOutline}>CONFIGURE AI</Text>
-              </TouchableOpacity>
-            </MinimalCard>
-          ) : loadingRecipes ? (
-            <MinimalCard>
-              <Text style={styles.loadingText}>Loading personalized recipes...</Text>
-            </MinimalCard>
-          ) : suggestedRecipes.length > 0 ? (
-            suggestedRecipes.map(recipe => (
-              <RecipeCard 
-                key={recipe.name}
-                recipe={recipe} 
-                onPress={() => {
-                  Alert.alert(
-                    recipe.name,
-                    `${recipe.instructions.length} steps • ${recipe.cookingTime}`,
-                    [{ text: 'OK' }]
-                  );
-                }}
-              />
+        </View>
+
+        {/* Recent Meals */}
+        <View style={styles.mealsContainer}>
+          <Text style={styles.sectionTitle}>Today's Meals</Text>
+          {todayMeals.length > 0 ? (
+            todayMeals.slice(0, 3).map((meal, index) => (
+              <View key={index} style={styles.mealItem}>
+                <View>
+                  <Text style={styles.mealName}>{meal.name}</Text>
+                  <Text style={styles.mealTime}>{meal.mealType}</Text>
+                </View>
+                <Text style={styles.mealCalories}>
+                  {Math.round(meal.calories)} cal
+                </Text>
+              </View>
             ))
           ) : (
-            <MinimalCard>
-              <Text style={styles.noRecipesText}>
-                Add items to your pantry to get recipe suggestions
-              </Text>
-            </MinimalCard>
+            <View style={styles.emptyMeals}>
+              <Text style={styles.emptyText}>No meals logged today</Text>
+              <TouchableOpacity 
+                style={styles.addMealButton}
+                onPress={() => router.push('/add-food')}
+              >
+                <Text style={styles.addMealText}>Add your first meal</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -219,139 +229,207 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  progressCard: {
-    marginBottom: ZaraTheme.spacing.lg,
-  },
-  sectionTitle: {
-    ...ZaraTheme.typography.caption,
-    marginBottom: ZaraTheme.spacing.md,
-    color: ZaraTheme.colors.black,
-  },
-  calorieStats: {
-    alignItems: 'center',
-    marginBottom: ZaraTheme.spacing.lg,
-  },
-  calorieMain: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: ZaraTheme.spacing.md,
-  },
-  calorieNumber: {
-    ...ZaraTheme.typography.h1,
-    fontSize: 42,
-  },
-  calorieGoal: {
-    ...ZaraTheme.typography.body,
-    color: ZaraTheme.colors.mediumGray,
-    marginLeft: ZaraTheme.spacing.sm,
-  },
-  progressBar: {
-    width: '100%',
-    height: 2,
-    backgroundColor: ZaraTheme.colors.lightGray,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: ZaraTheme.colors.black,
-  },
-  macros: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-  },
-  macroItem: {
-    alignItems: 'center',
-  },
-  macroValue: {
-    ...ZaraTheme.typography.h3,
-    marginBottom: ZaraTheme.spacing.xs,
-  },
-  macroLabel: {
-    ...ZaraTheme.typography.caption,
-    color: ZaraTheme.colors.mediumGray,
-  },
-  primaryActions: {
-    flexDirection: 'row',
-    marginBottom: ZaraTheme.spacing.lg,
-    gap: ZaraTheme.spacing.md,
-  },
-  primaryButton: {
+  container: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: ZaraTheme.spacing.md,
-    paddingHorizontal: ZaraTheme.spacing.md,
-    minHeight: 48,
+    backgroundColor: '#F8F9FA',
   },
-  scanButton: {
-    backgroundColor: ZaraTheme.colors.black,
-    borderWidth: 1,
-    borderColor: ZaraTheme.colors.black,
-  },
-  addButton: {
-    backgroundColor: ZaraTheme.colors.white,
-    borderWidth: 1,
-    borderColor: ZaraTheme.colors.black,
-  },
-  primaryButtonText: {
-    ...ZaraTheme.typography.button,
-    color: ZaraTheme.colors.white,
-    fontSize: width < 375 ? 12 : 14,
-  },
-  primaryButtonTextOutline: {
-    ...ZaraTheme.typography.button,
-    color: ZaraTheme.colors.black,
-    fontSize: width < 375 ? 12 : 14,
-  },
-  secondaryActions: {
-    flexDirection: 'row',
-    marginBottom: ZaraTheme.spacing.lg,
-    gap: ZaraTheme.spacing.md,
-  },
-  secondaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: ZaraTheme.spacing.md,
-    paddingHorizontal: ZaraTheme.spacing.sm,
-    backgroundColor: ZaraTheme.colors.white,
-    borderWidth: 1,
-    borderColor: ZaraTheme.colors.black,
-    minHeight: 48,
-  },
-  secondaryButtonText: {
-    ...ZaraTheme.typography.button,
-    color: ZaraTheme.colors.black,
-    fontSize: width < 375 ? 12 : 14,
-  },
-  section: {
-    marginBottom: ZaraTheme.spacing.xl,
-  },
-  sectionHeader: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: ZaraTheme.spacing.md,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
-  seeAll: {
-    ...ZaraTheme.typography.caption,
-    color: ZaraTheme.colors.black,
+  greeting: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '400',
   },
-  configureText: {
-    ...ZaraTheme.typography.bodySmall,
+  userName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginTop: 4,
+  },
+  calendarButton: {
+    padding: 12,
+    backgroundColor: '#F0F8FF',
+    borderRadius: 12,
+  },
+  statsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginBottom: 16,
+  },
+  calorieCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  calorieHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  calorieTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  calorieCount: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#007AFF',
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E5E5E5',
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#007AFF',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 14,
+    color: '#666',
     textAlign: 'center',
-    color: ZaraTheme.colors.mediumGray,
   },
-  loadingText: {
-    ...ZaraTheme.typography.bodySmall,
-    textAlign: 'center',
-    color: ZaraTheme.colors.mediumGray,
+  macroContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  noRecipesText: {
-    ...ZaraTheme.typography.bodySmall,
-    textAlign: 'center',
-    color: ZaraTheme.colors.mediumGray,
+  macroItem: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  macroLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  macroValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginBottom: 8,
+  },
+  macroBar: {
+    height: 4,
+    backgroundColor: '#E5E5E5',
+    borderRadius: 2,
+  },
+  macroFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  actionsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  actionCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  actionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1A1A1A',
+    marginTop: 8,
+  },
+  mealsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  mealItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  mealName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1A1A1A',
+  },
+  mealTime: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  mealCalories: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+  },
+  emptyMeals: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 12,
+  },
+  addMealButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  addMealText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

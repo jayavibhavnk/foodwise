@@ -1,181 +1,337 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
   TextInput,
   Alert,
-  StyleSheet 
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Search } from 'lucide-react-native';
-import { zaraStyles, ZaraTheme } from '@/styles/zaraTheme';
-import { PantryItem, PantryItemData } from '@/components/PantryItem';
-import { MinimalCard } from '@/components/MinimalCard';
+import { Plus, Search, Package, Calendar, Trash2 } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
+
+interface PantryItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  category: string;
+  expiryDate?: string;
+  addedDate: string;
+}
 
 export default function PantryScreen() {
+  const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [pantryItems, setPantryItems] = useState<PantryItemData[]>([
-    {
-      id: '1',
-      name: 'Chicken Breast',
-      quantity: 2,
-      unit: 'lbs',
-      expiryDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-      category: 'Meat',
-    },
-    {
-      id: '2',
-      name: 'Greek Yogurt',
-      quantity: 1,
-      unit: 'container',
-      expiryDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // 1 day from now
-      category: 'Dairy',
-    },
-    {
-      id: '3',
-      name: 'Broccoli',
-      quantity: 2,
-      unit: 'heads',
-      expiryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-      category: 'Vegetables',
-    },
-    {
-      id: '4',
-      name: 'Whole Wheat Bread',
-      quantity: 1,
-      unit: 'loaf',
-      expiryDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // Expired yesterday
-      category: 'Grains',
-    },
-  ]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newItem, setNewItem] = useState({
+    name: '',
+    quantity: '',
+    unit: 'pieces',
+    category: 'Other',
+    expiryDate: '',
+  });
 
-  const filteredItems = pantryItems.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const categories = ['Fruits', 'Vegetables', 'Dairy', 'Meat', 'Grains', 'Spices', 'Other'];
+  const units = ['pieces', 'kg', 'g', 'L', 'ml', 'cups', 'tbsp', 'tsp'];
 
-  const handleUseItem = (itemId: string) => {
+  useEffect(() => {
+    loadPantryItems();
+  }, []);
+
+  const loadPantryItems = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('pantry_items');
+      if (stored) {
+        setPantryItems(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.error('Failed to load pantry items:', error);
+    }
+  };
+
+  const savePantryItems = async (items: PantryItem[]) => {
+    try {
+      await AsyncStorage.setItem('pantry_items', JSON.stringify(items));
+      setPantryItems(items);
+    } catch (error) {
+      console.error('Failed to save pantry items:', error);
+    }
+  };
+
+  const addItem = () => {
+    if (!newItem.name.trim() || !newItem.quantity) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    const item: PantryItem = {
+      id: Date.now().toString(),
+      name: newItem.name.trim(),
+      quantity: parseFloat(newItem.quantity),
+      unit: newItem.unit,
+      category: newItem.category,
+      expiryDate: newItem.expiryDate || undefined,
+      addedDate: new Date().toISOString(),
+    };
+
+    const updatedItems = [...pantryItems, item];
+    savePantryItems(updatedItems);
+
+    setNewItem({
+      name: '',
+      quantity: '',
+      unit: 'pieces',
+      category: 'Other',
+      expiryDate: '',
+    });
+    setShowAddModal(false);
+  };
+
+  const deleteItem = (id: string) => {
     Alert.alert(
-      'Use Item',
-      'Mark this item as used?',
+      'Delete Item',
+      'Are you sure you want to remove this item from your pantry?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Use',
+          text: 'Delete',
+          style: 'destructive',
           onPress: () => {
-            setPantryItems(items => items.filter(item => item.id !== itemId));
-          }
-        }
+            const updatedItems = pantryItems.filter(item => item.id !== id);
+            savePantryItems(updatedItems);
+          },
+        },
       ]
     );
   };
 
-  const handleAddItem = () => {
-    Alert.alert(
-      'Add Item',
-      'This would open a form to add new pantry items. In a complete app, you could also scan barcodes or use voice input.',
-      [{ text: 'OK' }]
-    );
+  const filteredItems = pantryItems.filter(item =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const groupedItems = filteredItems.reduce((groups, item) => {
+    const category = item.category;
+    if (!groups[category]) {
+      groups[category] = [];
+    }
+    groups[category].push(item);
+    return groups;
+  }, {} as Record<string, PantryItem[]>);
+
+  const isExpiringSoon = (expiryDate?: string) => {
+    if (!expiryDate) return false;
+    const expiry = new Date(expiryDate);
+    const today = new Date();
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 3 && diffDays >= 0;
   };
 
-  // Sort items by expiry date (expired first, then by days remaining)
-  const sortedItems = [...filteredItems].sort((a, b) => {
-    const aExpiry = a.expiryDate.getTime();
-    const bExpiry = b.expiryDate.getTime();
-    const now = Date.now();
-    
-    // If both expired or both not expired, sort by date
-    if ((aExpiry < now && bExpiry < now) || (aExpiry >= now && bExpiry >= now)) {
-      return aExpiry - bExpiry;
-    }
-    
-    // Put expired items first
-    return aExpiry < now ? -1 : 1;
-  });
-
-  const expiredCount = pantryItems.filter(item => item.expiryDate < new Date()).length;
-  const expiringCount = pantryItems.filter(item => {
-    const daysUntilExpiry = Math.ceil((item.expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    return daysUntilExpiry > 0 && daysUntilExpiry <= 3;
-  }).length;
+  const isExpired = (expiryDate?: string) => {
+    if (!expiryDate) return false;
+    const expiry = new Date(expiryDate);
+    const today = new Date();
+    return expiry < today;
+  };
 
   return (
-    <SafeAreaView style={zaraStyles.safeArea}>
-      <View style={styles.container}>
-        <View style={zaraStyles.header}>
-          <Text style={zaraStyles.title}>PANTRY</Text>
-          <View style={styles.stats}>
-            <Text style={zaraStyles.subtitle}>
-              {pantryItems.length} items
-              {expiredCount > 0 && ` • ${expiredCount} expired`}
-              {expiringCount > 0 && ` • ${expiringCount} expiring soon`}
-            </Text>
-          </View>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Search size={20} color={ZaraTheme.colors.mediumGray} strokeWidth={1.5} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search pantry items..."
-              placeholderTextColor={ZaraTheme.colors.mediumGray}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-          
-          <TouchableOpacity style={zaraStyles.button} onPress={handleAddItem}>
-            <Plus size={20} color={ZaraTheme.colors.white} strokeWidth={1.5} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Alerts Summary */}
-        {(expiredCount > 0 || expiringCount > 0) && (
-          <MinimalCard style={styles.alertCard}>
-            <Text style={styles.alertTitle}>ATTENTION REQUIRED</Text>
-            {expiredCount > 0 && (
-              <Text style={styles.alertText}>
-                {expiredCount} item{expiredCount > 1 ? 's' : ''} expired
-              </Text>
-            )}
-            {expiringCount > 0 && (
-              <Text style={styles.alertText}>
-                {expiringCount} item{expiringCount > 1 ? 's' : ''} expiring within 3 days
-              </Text>
-            )}
-          </MinimalCard>
-        )}
-
-        {/* Pantry Items */}
-        <ScrollView style={styles.itemsList} showsVerticalScrollIndicator={false}>
-          {sortedItems.length === 0 ? (
-            <MinimalCard>
-              <Text style={styles.emptyText}>
-                {searchQuery ? 'No items match your search' : 'Your pantry is empty'}
-              </Text>
-              {!searchQuery && (
-                <TouchableOpacity 
-                  style={[zaraStyles.buttonOutline, { marginTop: ZaraTheme.spacing.md }]}
-                  onPress={handleAddItem}
-                >
-                  <Text style={zaraStyles.buttonTextOutline}>ADD FIRST ITEM</Text>
-                </TouchableOpacity>
-              )}
-            </MinimalCard>
-          ) : (
-            sortedItems.map(item => (
-              <PantryItem
-                key={item.id}
-                item={item}
-                onUse={handleUseItem}
-              />
-            ))
-          )}
-        </ScrollView>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>My Pantry</Text>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => setShowAddModal(true)}
+        >
+          <Plus size={24} color="white" />
+        </TouchableOpacity>
       </View>
+
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <Search size={20} color="#666" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search pantry items..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      {/* Quick Actions */}
+      <View style={styles.quickActions}>
+        <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={() => router.push('/add-grocery')}
+        >
+          <Package size={20} color="#007AFF" />
+          <Text style={styles.quickActionText}>Add Groceries</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Pantry Items */}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {Object.keys(groupedItems).length > 0 ? (
+          Object.keys(groupedItems).map(category => (
+            <View key={category} style={styles.categorySection}>
+              <Text style={styles.categoryTitle}>{category}</Text>
+              {groupedItems[category].map(item => (
+                <View key={item.id} style={styles.itemCard}>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemName}>{item.name}</Text>
+                    <Text style={styles.itemQuantity}>
+                      {item.quantity} {item.unit}
+                    </Text>
+                    {item.expiryDate && (
+                      <View style={styles.expiryContainer}>
+                        <Calendar size={14} color="#666" />
+                        <Text 
+                          style={[
+                            styles.expiryText,
+                            isExpired(item.expiryDate) && styles.expiredText,
+                            isExpiringSoon(item.expiryDate) && styles.expiringSoonText,
+                          ]}
+                        >
+                          Expires: {new Date(item.expiryDate).toLocaleDateString()}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => deleteItem(item.id)}
+                  >
+                    <Trash2 size={20} color="#FF3B30" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Package size={64} color="#CCC" />
+            <Text style={styles.emptyTitle}>Your pantry is empty</Text>
+            <Text style={styles.emptySubtitle}>
+              Start adding items to keep track of your ingredients
+            </Text>
+            <TouchableOpacity 
+              style={styles.emptyButton}
+              onPress={() => setShowAddModal(true)}
+            >
+              <Text style={styles.emptyButtonText}>Add First Item</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Add Item Modal */}
+      <Modal
+        visible={showAddModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowAddModal(false)}>
+              <Text style={styles.cancelButton}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Add Item</Text>
+            <TouchableOpacity onPress={addItem}>
+              <Text style={styles.saveButton}>Save</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Item Name *</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g., Tomatoes"
+                value={newItem.name}
+                onChangeText={(text) => setNewItem({ ...newItem, name: text })}
+              />
+            </View>
+
+            <View style={styles.inputRow}>
+              <View style={[styles.inputGroup, { flex: 2 }]}>
+                <Text style={styles.inputLabel}>Quantity *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="0"
+                  value={newItem.quantity}
+                  onChangeText={(text) => setNewItem({ ...newItem, quantity: text })}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={[styles.inputGroup, { flex: 1, marginLeft: 12 }]}>
+                <Text style={styles.inputLabel}>Unit</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={styles.unitSelector}>
+                    {units.map(unit => (
+                      <TouchableOpacity
+                        key={unit}
+                        style={[
+                          styles.unitOption,
+                          newItem.unit === unit && styles.unitOptionSelected
+                        ]}
+                        onPress={() => setNewItem({ ...newItem, unit })}
+                      >
+                        <Text style={[
+                          styles.unitOptionText,
+                          newItem.unit === unit && styles.unitOptionTextSelected
+                        ]}>
+                          {unit}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Category</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.categorySelector}>
+                  {categories.map(category => (
+                    <TouchableOpacity
+                      key={category}
+                      style={[
+                        styles.categoryOption,
+                        newItem.category === category && styles.categoryOptionSelected
+                      ]}
+                      onPress={() => setNewItem({ ...newItem, category })}
+                    >
+                      <Text style={[
+                        styles.categoryOptionText,
+                        newItem.category === category && styles.categoryOptionTextSelected
+                      ]}>
+                        {category}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Expiry Date (Optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="YYYY-MM-DD"
+                value={newItem.expiryDate}
+                onChangeText={(text) => setNewItem({ ...newItem, expiryDate: text })}
+              />
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -183,53 +339,263 @@ export default function PantryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: ZaraTheme.colors.white,
+    backgroundColor: '#F8F9FA',
   },
-  stats: {
-    marginTop: ZaraTheme.spacing.xs,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+  },
+  addButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
-    paddingHorizontal: ZaraTheme.spacing.md,
-    marginBottom: ZaraTheme.spacing.lg,
     alignItems: 'center',
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: ZaraTheme.colors.lightGray,
-    marginRight: ZaraTheme.spacing.md,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: ZaraTheme.spacing.md,
-    paddingLeft: ZaraTheme.spacing.sm,
-    ...ZaraTheme.typography.body,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#1A1A1A',
   },
-  alertCard: {
-    marginHorizontal: ZaraTheme.spacing.md,
-    marginBottom: ZaraTheme.spacing.md,
-    borderColor: ZaraTheme.colors.black,
+  quickActions: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
-  alertTitle: {
-    ...ZaraTheme.typography.caption,
-    color: ZaraTheme.colors.black,
-    marginBottom: ZaraTheme.spacing.sm,
+  quickActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  alertText: {
-    ...ZaraTheme.typography.bodySmall,
-    color: ZaraTheme.colors.darkGray,
-    marginBottom: ZaraTheme.spacing.xs,
+  quickActionText: {
+    marginLeft: 12,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#007AFF',
   },
-  itemsList: {
+  content: {
     flex: 1,
-    paddingHorizontal: ZaraTheme.spacing.md,
+    paddingHorizontal: 20,
   },
-  emptyText: {
-    ...ZaraTheme.typography.bodySmall,
+  categorySection: {
+    marginBottom: 24,
+  },
+  categoryTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginBottom: 12,
+  },
+  itemCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
+  itemQuantity: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  expiryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  expiryText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  expiredText: {
+    color: '#FF3B30',
+    fontWeight: '500',
+  },
+  expiringSoonText: {
+    color: '#FF9500',
+    fontWeight: '500',
+  },
+  deleteButton: {
+    padding: 8,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: '#666',
     textAlign: 'center',
-    color: ZaraTheme.colors.mediumGray,
+    marginBottom: 24,
+  },
+  emptyButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  emptyButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    backgroundColor: 'white',
+  },
+  cancelButton: {
+    fontSize: 16,
+    color: '#666',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+  },
+  saveButton: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1A1A1A',
+    marginBottom: 8,
+  },
+  textInput: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#1A1A1A',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  unitSelector: {
+    flexDirection: 'row',
+  },
+  unitOption: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  unitOptionSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  unitOptionText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  unitOptionTextSelected: {
+    color: 'white',
+  },
+  categorySelector: {
+    flexDirection: 'row',
+  },
+  categoryOption: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  categoryOptionSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  categoryOptionText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  categoryOptionTextSelected: {
+    color: 'white',
   },
 });
