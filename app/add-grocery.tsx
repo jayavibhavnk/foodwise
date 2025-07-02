@@ -7,8 +7,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  StyleSheet,
-  Platform
+  StyleSheet 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -57,19 +56,9 @@ export default function AddGroceryScreen() {
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
+    setShowDatePicker(false);
     if (selectedDate) {
       setExpiryDate(selectedDate);
-    }
-  };
-
-  const showDatePickerModal = () => {
-    if (Platform.OS === 'ios') {
-      setShowDatePicker(!showDatePicker);
-    } else {
-      setShowDatePicker(true);
     }
   };
 
@@ -171,7 +160,7 @@ export default function AddGroceryScreen() {
               <Text style={styles.label}>EXPIRY DATE</Text>
               <TouchableOpacity 
                 style={styles.dateButton}
-                onPress={showDatePickerModal}
+                onPress={() => setShowDatePicker(true)}
               >
                 <Calendar size={20} color={ZaraTheme.colors.black} strokeWidth={1.5} />
                 <Text style={styles.dateButtonText}>
@@ -184,20 +173,10 @@ export default function AddGroceryScreen() {
               <DateTimePicker
                 value={expiryDate}
                 mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                display="default"
                 onChange={onDateChange}
                 minimumDate={new Date()}
-                style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
               />
-            )}
-
-            {Platform.OS === 'ios' && showDatePicker && (
-              <TouchableOpacity 
-                style={[zaraStyles.buttonOutline, { marginTop: ZaraTheme.spacing.md }]}
-                onPress={() => setShowDatePicker(false)}
-              >
-                <Text style={zaraStyles.buttonTextOutline}>DONE</Text>
-              </TouchableOpacity>
             )}
           </MinimalCard>
 
@@ -332,9 +311,6 @@ const styles = StyleSheet.create({
   dateButtonText: {
     ...ZaraTheme.typography.body,
     marginLeft: ZaraTheme.spacing.sm,
-  },
-  iosDatePicker: {
-    marginVertical: ZaraTheme.spacing.md,
   },
   tipText: {
     ...ZaraTheme.typography.bodySmall,

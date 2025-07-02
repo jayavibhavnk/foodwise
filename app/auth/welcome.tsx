@@ -1,10 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { zaraStyles, ZaraTheme } from '@/styles/zaraTheme';
-
-const { width, height } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   return (
@@ -29,14 +27,14 @@ export default function WelcomeScreen() {
           <View style={styles.feature}>
             <Text style={styles.featureTitle}>Smart Food Scanning</Text>
             <Text style={styles.featureDescription}>
-              Instantly analyze nutrition from photos using AI
+              Instantly analyze nutrition from photos
             </Text>
           </View>
           
           <View style={styles.feature}>
             <Text style={styles.featureTitle}>Pantry Management</Text>
             <Text style={styles.featureDescription}>
-              Track groceries and expiry dates intelligently
+              Track groceries and expiry dates
             </Text>
           </View>
           
@@ -84,17 +82,16 @@ const styles = StyleSheet.create({
   },
   logo: {
     ...ZaraTheme.typography.h1,
-    fontSize: width < 375 ? 28 : 36,
+    fontSize: 36,
     marginBottom: ZaraTheme.spacing.sm,
   },
   tagline: {
     ...ZaraTheme.typography.caption,
     color: ZaraTheme.colors.mediumGray,
     textAlign: 'center',
-    maxWidth: width * 0.8,
   },
   hero: {
-    height: height * 0.25,
+    height: 200,
     marginBottom: ZaraTheme.spacing.xl,
     borderRadius: 4,
     overflow: 'hidden',

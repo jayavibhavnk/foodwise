@@ -16,7 +16,6 @@ export interface User {
   carbsGoal: number;
   fatGoal: number;
   dietaryRestrictions: string[];
-  onboardingCompleted: boolean;
   createdAt: Date;
 }
 
@@ -48,21 +47,15 @@ class AuthService {
 
   private async initializeAuth() {
     try {
-      const token = await SecureStore.getItemAsync('auth_token');
-      if (token) {
-        const userData = await AsyncStorage.getItem('user_data');
-        if (userData) {
-          const user = JSON.parse(userData);
-          user.createdAt = new Date(user.createdAt);
-          this.authState = {
-            isAuthenticated: true,
-            user,
-            isLoading: false,
-          };
-        } else {
-          await SecureStore.deleteItemAsync('auth_token');
-          this.authState.isLoading = false;
-        }
+      const userData = await AsyncStorage.getItem('user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        user.createdAt = new Date(user.createdAt);
+        this.authState = {
+          isAuthenticated: true,
+          user,
+          isLoading: false,
+        };
       } else {
         this.authState.isLoading = false;
       }
@@ -86,16 +79,6 @@ class AuthService {
 
   getAuthState(): AuthState {
     return this.authState;
-  }
-
-  private async generateSecureToken(email: string): Promise<string> {
-    const timestamp = Date.now().toString();
-    const randomBytes = await Crypto.getRandomBytesAsync(16);
-    const randomString = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('');
-    return await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      `${email}:${timestamp}:${randomString}`
-    );
   }
 
   async signUp(email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> {
@@ -123,27 +106,16 @@ class AuthService {
         carbsGoal: 250,
         fatGoal: 65,
         dietaryRestrictions: [],
-        onboardingCompleted: false,
         createdAt: new Date(),
       };
 
-      // Hash password
-      const hashedPassword = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        password + userId
-      );
-
       // Store password securely
-      await SecureStore.setItemAsync(`password_${userId}`, hashedPassword);
+      await SecureStore.setItemAsync(`password_${userId}`, password);
 
       // Store user data
-      users.push({ id: userId, email, hashedPassword });
+      users.push({ id: userId, email, password: 'hashed' }); // Don't store actual password
       await AsyncStorage.setItem('all_users', JSON.stringify(users));
       await AsyncStorage.setItem('user_data', JSON.stringify(newUser));
-
-      // Generate and store auth token
-      const token = await this.generateSecureToken(email);
-      await SecureStore.setItemAsync('auth_token', token);
 
       this.authState = {
         isAuthenticated: true,
@@ -169,14 +141,9 @@ class AuthService {
         return { success: false, error: 'User not found' };
       }
 
-      // Hash provided password and compare
-      const hashedPassword = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        password + user.id
-      );
-
+      // Verify password
       const storedPassword = await SecureStore.getItemAsync(`password_${user.id}`);
-      if (storedPassword !== hashedPassword) {
+      if (storedPassword !== password) {
         return { success: false, error: 'Invalid password' };
       }
 
@@ -185,10 +152,6 @@ class AuthService {
       if (userData) {
         const fullUser = JSON.parse(userData);
         fullUser.createdAt = new Date(fullUser.createdAt);
-        
-        // Generate and store new auth token
-        const token = await this.generateSecureToken(email);
-        await SecureStore.setItemAsync('auth_token', token);
         
         this.authState = {
           isAuthenticated: true,
@@ -207,7 +170,6 @@ class AuthService {
 
   async signOut(): Promise<void> {
     try {
-      await SecureStore.deleteItemAsync('auth_token');
       await AsyncStorage.removeItem('user_data');
       this.authState = {
         isAuthenticated: false,
@@ -243,27 +205,7 @@ class AuthService {
   }
 
   async completeOnboarding(userData: Partial<User>): Promise<{ success: boolean; error?: string }> {
-    const result = await this.updateUser({ ...userData, onboardingCompleted: true });
-    return result;
-  }
-
-  async resetPassword(email: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const existingUsers = await AsyncStorage.getItem('all_users');
-      const users = existingUsers ? JSON.parse(existingUsers) : [];
-      
-      const user = users.find((u: any) => u.email === email);
-      if (!user) {
-        return { success: false, error: 'User not found' };
-      }
-
-      // In a real app, you would send an email with a reset link
-      // For now, we'll just return success
-      return { success: true };
-    } catch (error) {
-      console.error('Reset password failed:', error);
-      return { success: false, error: 'Failed to reset password' };
-    }
+    return this.updateUser(userData);
   }
 }
 

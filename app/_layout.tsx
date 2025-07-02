@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function RootLayout() {
   useFrameworkReady();
-  const { isLoading, isAuthenticated, user } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
 
   if (isLoading) {
     return null; // Show loading screen while checking auth
@@ -20,10 +20,8 @@ export default function RootLayout() {
             <Stack.Screen name="auth/welcome" options={{ headerShown: false }} />
             <Stack.Screen name="auth/signin" options={{ headerShown: false }} />
             <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
-            <Stack.Screen name="auth/forgot-password" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/onboarding" options={{ headerShown: false }} />
           </>
-        ) : !user?.onboardingCompleted ? (
-          <Stack.Screen name="auth/onboarding" options={{ headerShown: false }} />
         ) : (
           <>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

@@ -22,19 +22,9 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
   const handleSignUp = async () => {
     if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    if (!validateEmail(email.trim())) {
-      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
@@ -51,7 +41,9 @@ export default function SignUpScreen() {
     setLoading(true);
     try {
       const result = await signUp(email.trim(), password, name.trim());
-      if (!result.success) {
+      if (result.success) {
+        router.push('/auth/onboarding');
+      } else {
         Alert.alert('Sign Up Failed', result.error || 'Failed to create account');
       }
     } catch (error) {
