@@ -4,14 +4,14 @@ export const ZaraTheme = {
   colors: {
     black: '#000000',
     white: '#ffffff',
-    gray: '#f5f5f5',
+    gray: '#f8f9fa',
     darkGray: '#333333',
     lightGray: '#e5e5e5',
-    mediumGray: '#999999',
+    mediumGray: '#666666',
     accent: '#000000',
-    success: '#000000',
-    warning: '#000000',
-    error: '#000000',
+    success: '#28a745',
+    warning: '#ffc107',
+    error: '#dc3545',
   },
   typography: {
     h1: {
