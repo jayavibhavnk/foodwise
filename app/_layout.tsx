@@ -1,25 +1,31 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Redirect } from 'expo-router';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { useAuth } from '@/hooks/useAuth';
-import { router } from 'expo-router';
 
 export default function RootLayout() {
   useFrameworkReady();
   const { isAuthenticated, user, isLoading } = useAuth();
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.replace('/auth/welcome');
-      } else if (user && !user.onboardingCompleted) {
-        router.replace('/auth/onboarding');
-      } else if (user && user.onboardingCompleted) {
-        router.replace('/(tabs)');
-      }
-    }
-  }, [isAuthenticated, user, isLoading]);
+  // Show loading state while authentication is being determined
+  if (isLoading) {
+    return null; // or return a loading component
+  }
+
+  // Handle redirects declaratively
+  if (!isAuthenticated) {
+    return <Redirect href="/auth/welcome" />;
+  }
+
+  if (user && !user.onboardingCompleted) {
+    return <Redirect href="/auth/onboarding" />;
+  }
+
+  if (user && user.onboardingCompleted) {
+    return <Redirect href="/(tabs)" />;
+  }
 
   return (
     <>
