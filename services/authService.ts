@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import * as Crypto from 'expo-crypto';
 
 export interface User {
@@ -47,7 +48,7 @@ class AuthService {
 
   private async initializeAuth() {
     try {
-      const token = await AsyncStorage.getItem('auth_token');
+      const token = await SecureStore.getItemAsync('auth_token');
       if (token) {
         const userData = await AsyncStorage.getItem('user_data');
         if (userData) {
@@ -59,7 +60,7 @@ class AuthService {
             isLoading: false,
           };
         } else {
-          await AsyncStorage.removeItem('auth_token');
+          await SecureStore.deleteItemAsync('auth_token');
           this.authState.isLoading = false;
         }
       } else {
@@ -133,7 +134,7 @@ class AuthService {
       );
 
       // Store password securely
-      await AsyncStorage.setItem(`password_${userId}`, hashedPassword);
+      await SecureStore.setItemAsync(`password_${userId}`, hashedPassword);
 
       // Store user data
       users.push({ id: userId, email, hashedPassword });
@@ -142,7 +143,7 @@ class AuthService {
 
       // Generate and store auth token
       const token = await this.generateSecureToken(email);
-      await AsyncStorage.setItem('auth_token', token);
+      await SecureStore.setItemAsync('auth_token', token);
 
       this.authState = {
         isAuthenticated: true,
@@ -174,7 +175,7 @@ class AuthService {
         password + user.id
       );
 
-      const storedPassword = await AsyncStorage.getItem(`password_${user.id}`);
+      const storedPassword = await SecureStore.getItemAsync(`password_${user.id}`);
       if (storedPassword !== hashedPassword) {
         return { success: false, error: 'Invalid password' };
       }
@@ -187,7 +188,7 @@ class AuthService {
         
         // Generate and store new auth token
         const token = await this.generateSecureToken(email);
-        await AsyncStorage.setItem('auth_token', token);
+        await SecureStore.setItemAsync('auth_token', token);
         
         this.authState = {
           isAuthenticated: true,
@@ -206,7 +207,7 @@ class AuthService {
 
   async signOut(): Promise<void> {
     try {
-      await AsyncStorage.removeItem('auth_token');
+      await SecureStore.deleteItemAsync('auth_token');
       await AsyncStorage.removeItem('user_data');
       this.authState = {
         isAuthenticated: false,
