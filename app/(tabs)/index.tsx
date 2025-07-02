@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ScanLine, Plus, Calendar, ChefHat } from 'lucide-react-native';
+import { ScanLine, Plus, Calendar, ChefHat, Settings } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { zaraStyles, ZaraTheme } from '@/styles/zaraTheme';
 import { MinimalCard } from '@/components/MinimalCard';
@@ -72,14 +72,34 @@ export default function DashboardScreen() {
 
   const calorieProgress = (todayStats.consumedCalories / todayStats.dailyGoal) * 100;
 
+  // Get first name from full name
+  const getFirstName = (fullName: string) => {
+    return fullName.split(' ')[0];
+  };
+
   return (
     <SafeAreaView style={zaraStyles.safeArea}>
       <ScrollView style={zaraStyles.container} showsVerticalScrollIndicator={false}>
         <View style={zaraStyles.header}>
-          <Text style={zaraStyles.title}>FOODWISE</Text>
-          <Text style={zaraStyles.subtitle}>
-            {format(new Date(), 'EEEE, MMMM do')}
-          </Text>
+          <View style={styles.headerTop}>
+            <View style={styles.headerLeft}>
+              <Text style={zaraStyles.title}>FOODWISE</Text>
+              {user && (
+                <Text style={styles.greeting}>
+                  Hi {getFirstName(user.name)}
+                </Text>
+              )}
+              <Text style={zaraStyles.subtitle}>
+                {format(new Date(), 'EEEE, MMMM do')}
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.settingsButton}
+              onPress={() => router.push('/settings')}
+            >
+              <Settings size={24} color={ZaraTheme.colors.black} strokeWidth={1.5} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Calorie Progress */}
@@ -102,20 +122,32 @@ export default function DashboardScreen() {
                 ]} 
               />
             </View>
+            <Text style={styles.progressText}>
+              {Math.round(calorieProgress)}% of daily goal
+            </Text>
           </View>
           
           <View style={styles.macros}>
             <View style={styles.macroItem}>
               <Text style={styles.macroValue}>{todayStats.protein}g</Text>
               <Text style={styles.macroLabel}>PROTEIN</Text>
+              {user && (
+                <Text style={styles.macroGoal}>/ {user.proteinGoal}g</Text>
+              )}
             </View>
             <View style={styles.macroItem}>
               <Text style={styles.macroValue}>{todayStats.carbs}g</Text>
               <Text style={styles.macroLabel}>CARBS</Text>
+              {user && (
+                <Text style={styles.macroGoal}>/ {user.carbsGoal}g</Text>
+              )}
             </View>
             <View style={styles.macroItem}>
               <Text style={styles.macroValue}>{todayStats.fat}g</Text>
               <Text style={styles.macroLabel}>FAT</Text>
+              {user && (
+                <Text style={styles.macroGoal}>/ {user.fatGoal}g</Text>
+              )}
             </View>
           </View>
         </MinimalCard>
@@ -165,6 +197,34 @@ export default function DashboardScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Personalized Insights */}
+        {user && (
+          <MinimalCard style={styles.insightsCard}>
+            <Text style={styles.sectionTitle}>YOUR PROGRESS</Text>
+            <View style={styles.insightsList}>
+              <View style={styles.insightItem}>
+                <Text style={styles.insightLabel}>Daily Goal</Text>
+                <Text style={styles.insightValue}>{user.dailyCalorieGoal} calories</Text>
+              </View>
+              <View style={styles.insightItem}>
+                <Text style={styles.insightLabel}>Activity Level</Text>
+                <Text style={styles.insightValue}>
+                  {user.activityLevel?.charAt(0).toUpperCase() + user.activityLevel?.slice(1).replace('_', ' ')}
+                </Text>
+              </View>
+              {user.dietaryRestrictions && user.dietaryRestrictions.length > 0 && (
+                <View style={styles.insightItem}>
+                  <Text style={styles.insightLabel}>Dietary Preferences</Text>
+                  <Text style={styles.insightValue}>
+                    {user.dietaryRestrictions.slice(0, 2).join(', ')}
+                    {user.dietaryRestrictions.length > 2 && ` +${user.dietaryRestrictions.length - 2} more`}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </MinimalCard>
+        )}
 
         {/* Recipe Suggestions */}
         <View style={styles.section}>
@@ -219,6 +279,24 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  greeting: {
+    ...ZaraTheme.typography.h3,
+    color: ZaraTheme.colors.mediumGray,
+    marginTop: ZaraTheme.spacing.xs,
+    marginBottom: ZaraTheme.spacing.xs,
+  },
+  settingsButton: {
+    padding: ZaraTheme.spacing.sm,
+    marginTop: -ZaraTheme.spacing.sm,
+  },
   progressCard: {
     marginBottom: ZaraTheme.spacing.lg,
   },
@@ -247,12 +325,19 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     width: '100%',
-    height: 2,
+    height: 4,
     backgroundColor: ZaraTheme.colors.lightGray,
+    marginBottom: ZaraTheme.spacing.sm,
+    borderRadius: 2,
   },
   progressFill: {
     height: '100%',
     backgroundColor: ZaraTheme.colors.black,
+    borderRadius: 2,
+  },
+  progressText: {
+    ...ZaraTheme.typography.caption,
+    color: ZaraTheme.colors.mediumGray,
   },
   macros: {
     flexDirection: 'row',
@@ -270,6 +355,12 @@ const styles = StyleSheet.create({
     ...ZaraTheme.typography.caption,
     color: ZaraTheme.colors.mediumGray,
   },
+  macroGoal: {
+    ...ZaraTheme.typography.caption,
+    color: ZaraTheme.colors.lightGray,
+    fontSize: 10,
+    marginTop: 2,
+  },
   primaryActions: {
     flexDirection: 'row',
     marginBottom: ZaraTheme.spacing.lg,
@@ -283,6 +374,7 @@ const styles = StyleSheet.create({
     paddingVertical: ZaraTheme.spacing.md,
     paddingHorizontal: ZaraTheme.spacing.md,
     minHeight: 48,
+    borderRadius: 8,
   },
   scanButton: {
     backgroundColor: ZaraTheme.colors.black,
@@ -320,11 +412,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: ZaraTheme.colors.black,
     minHeight: 48,
+    borderRadius: 8,
   },
   secondaryButtonText: {
     ...ZaraTheme.typography.button,
     color: ZaraTheme.colors.black,
     fontSize: width < 375 ? 12 : 14,
+  },
+  insightsCard: {
+    marginBottom: ZaraTheme.spacing.lg,
+  },
+  insightsList: {
+    gap: ZaraTheme.spacing.md,
+  },
+  insightItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  insightLabel: {
+    ...ZaraTheme.typography.body,
+    color: ZaraTheme.colors.mediumGray,
+  },
+  insightValue: {
+    ...ZaraTheme.typography.body,
+    color: ZaraTheme.colors.black,
+    fontWeight: '500',
   },
   section: {
     marginBottom: ZaraTheme.spacing.xl,

@@ -8,14 +8,16 @@ export default function RootLayout() {
   useFrameworkReady();
   const { isLoading, isAuthenticated } = useAuth();
 
+  // Show loading while checking auth state
   if (isLoading) {
-    return null; // Show loading screen while checking auth
+    return null;
   }
 
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
+          // Authentication screens
           <>
             <Stack.Screen name="auth/welcome" options={{ headerShown: false }} />
             <Stack.Screen name="auth/signin" options={{ headerShown: false }} />
@@ -23,6 +25,7 @@ export default function RootLayout() {
             <Stack.Screen name="auth/onboarding" options={{ headerShown: false }} />
           </>
         ) : (
+          // Main app screens
           <>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="calendar" options={{ headerShown: false }} />

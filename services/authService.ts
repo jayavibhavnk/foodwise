@@ -17,6 +17,7 @@ export interface User {
   fatGoal: number;
   dietaryRestrictions: string[];
   createdAt: Date;
+  onboardingCompleted?: boolean;
 }
 
 export interface AuthState {
@@ -51,11 +52,22 @@ class AuthService {
       if (userData) {
         const user = JSON.parse(userData);
         user.createdAt = new Date(user.createdAt);
-        this.authState = {
-          isAuthenticated: true,
-          user,
-          isLoading: false,
-        };
+        
+        // Check if user has completed onboarding
+        if (user.onboardingCompleted !== false) {
+          this.authState = {
+            isAuthenticated: true,
+            user,
+            isLoading: false,
+          };
+        } else {
+          // User exists but hasn't completed onboarding
+          this.authState = {
+            isAuthenticated: false,
+            user: null,
+            isLoading: false,
+          };
+        }
       } else {
         this.authState.isLoading = false;
       }
@@ -107,6 +119,7 @@ class AuthService {
         fatGoal: 65,
         dietaryRestrictions: [],
         createdAt: new Date(),
+        onboardingCompleted: false,
       };
 
       // Store password securely
@@ -117,9 +130,10 @@ class AuthService {
       await AsyncStorage.setItem('all_users', JSON.stringify(users));
       await AsyncStorage.setItem('user_data', JSON.stringify(newUser));
 
+      // Don't authenticate yet - user needs to complete onboarding
       this.authState = {
-        isAuthenticated: true,
-        user: newUser,
+        isAuthenticated: false,
+        user: null,
         isLoading: false,
       };
 
@@ -152,6 +166,18 @@ class AuthService {
       if (userData) {
         const fullUser = JSON.parse(userData);
         fullUser.createdAt = new Date(fullUser.createdAt);
+        
+        // Check if onboarding is completed
+        if (fullUser.onboardingCompleted === false) {
+          // User needs to complete onboarding
+          this.authState = {
+            isAuthenticated: false,
+            user: null,
+            isLoading: false,
+          };
+          this.notifyListeners();
+          return { success: false, error: 'Please complete your profile setup' };
+        }
         
         this.authState = {
           isAuthenticated: true,
@@ -205,7 +231,34 @@ class AuthService {
   }
 
   async completeOnboarding(userData: Partial<User>): Promise<{ success: boolean; error?: string }> {
-    return this.updateUser(userData);
+    try {
+      const currentUserData = await AsyncStorage.getItem('user_data');
+      if (!currentUserData) {
+        return { success: false, error: 'No user data found' };
+      }
+
+      const user = JSON.parse(currentUserData);
+      const updatedUser = { 
+        ...user, 
+        ...userData, 
+        onboardingCompleted: true,
+        createdAt: new Date(user.createdAt)
+      };
+      
+      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+
+      this.authState = {
+        isAuthenticated: true,
+        user: updatedUser,
+        isLoading: false,
+      };
+
+      this.notifyListeners();
+      return { success: true };
+    } catch (error) {
+      console.error('Complete onboarding failed:', error);
+      return { success: false, error: 'Failed to complete onboarding' };
+    }
   }
 }
 
