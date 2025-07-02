@@ -10,16 +10,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ArrowLeft, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react-native';
+import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { format, startOfWeek, addDays, subWeeks, addWeeks, isSameDay } from 'date-fns';
 import { zaraStyles, ZaraTheme } from '@/styles/zaraTheme';
 import { MinimalCard } from '@/components/MinimalCard';
 import { foodLogService, DailyLog } from '@/services/foodLogService';
 import { useAuth } from '@/hooks/useAuth';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-// Custom Chart Component
+// Custom Chart Component - Web Compatible
 const CustomChart = ({ data }: { data: { labels: string[], values: number[] } }) => {
   const maxValue = Math.max(...data.values, 1);
   const chartWidth = width - 80;
@@ -67,12 +67,6 @@ const CustomChart = ({ data }: { data: { labels: string[], values: number[] } })
             })}
           </View>
         </View>
-      </View>
-      
-      {/* Chart title */}
-      <View style={styles.chartTitleContainer}>
-        <TrendingUp size={16} color={ZaraTheme.colors.mediumGray} strokeWidth={1.5} />
-        <Text style={styles.chartTitle}>Daily Calorie Intake</Text>
       </View>
     </View>
   );
@@ -141,10 +135,7 @@ export default function CalendarScreen() {
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Week Navigation */}
           <View style={styles.weekNavigation}>
-            <TouchableOpacity 
-              style={styles.navButton}
-              onPress={() => navigateWeek('prev')}
-            >
+            <TouchableOpacity onPress={() => navigateWeek('prev')}>
               <ChevronLeft size={24} color={ZaraTheme.colors.black} strokeWidth={1.5} />
             </TouchableOpacity>
             
@@ -152,17 +143,14 @@ export default function CalendarScreen() {
               {format(currentWeek, 'MMM d')} - {format(addDays(currentWeek, 6), 'MMM d, yyyy')}
             </Text>
             
-            <TouchableOpacity 
-              style={styles.navButton}
-              onPress={() => navigateWeek('next')}
-            >
+            <TouchableOpacity onPress={() => navigateWeek('next')}>
               <ChevronRight size={24} color={ZaraTheme.colors.black} strokeWidth={1.5} />
             </TouchableOpacity>
           </View>
 
           {/* Weekly Chart */}
           <MinimalCard>
-            <Text style={styles.sectionTitle}>WEEKLY OVERVIEW</Text>
+            <Text style={styles.sectionTitle}>WEEKLY CALORIE INTAKE</Text>
             {weeklyLogs.length > 0 ? (
               <CustomChart data={getChartData()} />
             ) : (
@@ -387,14 +375,11 @@ const styles = StyleSheet.create({
     marginBottom: ZaraTheme.spacing.lg,
     paddingHorizontal: ZaraTheme.spacing.md,
   },
-  navButton: {
-    padding: ZaraTheme.spacing.sm,
-    borderRadius: 8,
-    backgroundColor: ZaraTheme.colors.lightGray,
-  },
   weekTitle: {
     ...ZaraTheme.typography.h3,
     textAlign: 'center',
+    flex: 1,
+    fontSize: width < 375 ? 16 : 20,
   },
   sectionTitle: {
     ...ZaraTheme.typography.caption,
@@ -420,7 +405,7 @@ const styles = StyleSheet.create({
   axisLabel: {
     ...ZaraTheme.typography.caption,
     color: ZaraTheme.colors.mediumGray,
-    fontSize: 10,
+    fontSize: width < 375 ? 9 : 10,
   },
   chartArea: {
     flex: 1,
@@ -457,26 +442,14 @@ const styles = StyleSheet.create({
   },
   bar: {
     backgroundColor: ZaraTheme.colors.black,
-    borderRadius: 2,
     minHeight: 2,
   },
   barLabel: {
     ...ZaraTheme.typography.caption,
     color: ZaraTheme.colors.mediumGray,
-    fontSize: 10,
+    fontSize: width < 375 ? 9 : 10,
     marginTop: 8,
     textAlign: 'center',
-  },
-  chartTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: ZaraTheme.spacing.sm,
-  },
-  chartTitle: {
-    ...ZaraTheme.typography.caption,
-    color: ZaraTheme.colors.mediumGray,
-    marginLeft: ZaraTheme.spacing.xs,
   },
   
   noDataContainer: {
@@ -492,55 +465,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: ZaraTheme.spacing.lg,
-    borderRadius: 12,
-    backgroundColor: ZaraTheme.colors.lightGray,
-    padding: 4,
   },
   dayButton: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: ZaraTheme.spacing.md,
-    marginHorizontal: 2,
-    borderRadius: 8,
+    marginHorizontal: 1,
+    borderWidth: 1,
+    borderColor: ZaraTheme.colors.lightGray,
     position: 'relative',
-    backgroundColor: 'transparent',
   },
   dayButtonSelected: {
+    borderColor: ZaraTheme.colors.black,
     backgroundColor: ZaraTheme.colors.black,
   },
   dayButtonToday: {
-    backgroundColor: ZaraTheme.colors.white,
+    borderColor: ZaraTheme.colors.darkGray,
   },
   dayButtonText: {
     ...ZaraTheme.typography.caption,
     color: ZaraTheme.colors.mediumGray,
-    fontSize: 11,
+    fontSize: width < 375 ? 10 : 12,
   },
   dayButtonTextSelected: {
     color: ZaraTheme.colors.white,
   },
   dayButtonTextToday: {
     color: ZaraTheme.colors.black,
-    fontWeight: '600',
   },
   dayButtonDate: {
     ...ZaraTheme.typography.body,
     marginTop: ZaraTheme.spacing.xs,
-    fontWeight: '500',
+    fontSize: width < 375 ? 14 : 16,
   },
   dayButtonDateSelected: {
     color: ZaraTheme.colors.white,
   },
   dayButtonDateToday: {
     color: ZaraTheme.colors.black,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   dayIndicator: {
     position: 'absolute',
     bottom: 4,
     width: 4,
     height: 4,
-    borderRadius: 2,
     backgroundColor: ZaraTheme.colors.black,
   },
   dayIndicatorSelected: {
@@ -550,22 +519,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: ZaraTheme.spacing.lg,
-    paddingVertical: ZaraTheme.spacing.md,
-    backgroundColor: ZaraTheme.colors.lightGray,
-    borderRadius: 12,
   },
   statItem: {
     alignItems: 'center',
+    flex: 1,
   },
   statValue: {
     ...ZaraTheme.typography.h3,
     marginBottom: ZaraTheme.spacing.xs,
-    fontWeight: '700',
+    fontSize: width < 375 ? 16 : 20,
   },
   statLabel: {
     ...ZaraTheme.typography.caption,
     color: ZaraTheme.colors.mediumGray,
-    fontSize: 10,
+    fontSize: width < 375 ? 10 : 12,
+    textAlign: 'center',
   },
   progressSection: {
     marginBottom: ZaraTheme.spacing.lg,
@@ -582,22 +550,21 @@ const styles = StyleSheet.create({
     ...ZaraTheme.typography.caption,
     marginBottom: ZaraTheme.spacing.xs,
     color: ZaraTheme.colors.mediumGray,
+    fontSize: width < 375 ? 10 : 12,
   },
   progressBar: {
-    height: 6,
+    height: 4,
     backgroundColor: ZaraTheme.colors.lightGray,
-    borderRadius: 3,
     marginBottom: ZaraTheme.spacing.xs,
   },
   progressFill: {
     height: '100%',
     backgroundColor: ZaraTheme.colors.black,
-    borderRadius: 3,
   },
   progressText: {
     ...ZaraTheme.typography.caption,
     color: ZaraTheme.colors.mediumGray,
-    fontSize: 11,
+    fontSize: width < 375 ? 10 : 12,
   },
   entriesSection: {
     marginBottom: ZaraTheme.spacing.lg,
@@ -621,37 +588,36 @@ const styles = StyleSheet.create({
   entryName: {
     ...ZaraTheme.typography.body,
     marginBottom: ZaraTheme.spacing.xs,
-    fontWeight: '500',
+    fontSize: width < 375 ? 14 : 16,
   },
   entryDetails: {
     ...ZaraTheme.typography.caption,
     color: ZaraTheme.colors.mediumGray,
-    fontSize: 11,
+    fontSize: width < 375 ? 10 : 12,
   },
   entryCalories: {
     ...ZaraTheme.typography.body,
     color: ZaraTheme.colors.black,
-    fontWeight: '600',
+    fontSize: width < 375 ? 14 : 16,
   },
   summaryStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: ZaraTheme.spacing.md,
-    backgroundColor: ZaraTheme.colors.lightGray,
-    borderRadius: 12,
   },
   summaryItem: {
     alignItems: 'center',
+    flex: 1,
   },
   summaryValue: {
     ...ZaraTheme.typography.h3,
     marginBottom: ZaraTheme.spacing.xs,
-    fontWeight: '700',
+    fontSize: width < 375 ? 16 : 20,
   },
   summaryLabel: {
     ...ZaraTheme.typography.caption,
     color: ZaraTheme.colors.mediumGray,
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: width < 375 ? 9 : 10,
+    lineHeight: width < 375 ? 12 : 14,
   },
 });
