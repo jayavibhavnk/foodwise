@@ -93,12 +93,6 @@ export default function DashboardScreen() {
                 {format(new Date(), 'EEEE, MMMM do')}
               </Text>
             </View>
-            <TouchableOpacity 
-              style={styles.settingsButton}
-              onPress={() => router.push('/settings')}
-            >
-              <Settings size={24} color={ZaraTheme.colors.black} strokeWidth={1.5} />
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -293,10 +287,6 @@ const styles = StyleSheet.create({
     marginTop: ZaraTheme.spacing.xs,
     marginBottom: ZaraTheme.spacing.xs,
   },
-  settingsButton: {
-    padding: ZaraTheme.spacing.sm,
-    marginTop: -ZaraTheme.spacing.sm,
-  },
   progressCard: {
     marginBottom: ZaraTheme.spacing.lg,
   },
@@ -328,12 +318,10 @@ const styles = StyleSheet.create({
     height: 4,
     backgroundColor: ZaraTheme.colors.lightGray,
     marginBottom: ZaraTheme.spacing.sm,
-    borderRadius: 2,
   },
   progressFill: {
     height: '100%',
     backgroundColor: ZaraTheme.colors.black,
-    borderRadius: 2,
   },
   progressText: {
     ...ZaraTheme.typography.caption,
@@ -374,16 +362,14 @@ const styles = StyleSheet.create({
     paddingVertical: ZaraTheme.spacing.md,
     paddingHorizontal: ZaraTheme.spacing.md,
     minHeight: 48,
-    borderRadius: 8,
+    borderWidth: 1,
   },
   scanButton: {
     backgroundColor: ZaraTheme.colors.black,
-    borderWidth: 1,
     borderColor: ZaraTheme.colors.black,
   },
   addButton: {
     backgroundColor: ZaraTheme.colors.white,
-    borderWidth: 1,
     borderColor: ZaraTheme.colors.black,
   },
   primaryButtonText: {
@@ -412,7 +398,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: ZaraTheme.colors.black,
     minHeight: 48,
-    borderRadius: 8,
   },
   secondaryButtonText: {
     ...ZaraTheme.typography.button,

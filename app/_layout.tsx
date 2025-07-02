@@ -17,7 +17,7 @@ export default function RootLayout() {
     <>
       <Stack screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
-          // Authentication screens
+          // Authentication screens - these will show first
           <>
             <Stack.Screen name="auth/welcome" options={{ headerShown: false }} />
             <Stack.Screen name="auth/signin" options={{ headerShown: false }} />
@@ -25,7 +25,7 @@ export default function RootLayout() {
             <Stack.Screen name="auth/onboarding" options={{ headerShown: false }} />
           </>
         ) : (
-          // Main app screens
+          // Main app screens - only show after authentication
           <>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="calendar" options={{ headerShown: false }} />
