@@ -40,11 +40,18 @@ export default function HomeScreen() {
   const loadTodayData = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const meals = await foodLogService.getMealsForDate(today);
-      const stats = await foodLogService.getDailyStats(today);
+      const dailyLog = await foodLogService.getDailyLog(today);
       
-      setTodayMeals(meals);
-      setTodayStats(stats);
+      // Extract meals from the daily log entries
+      setTodayMeals(dailyLog.entries);
+      
+      // Extract stats from the daily log totals
+      setTodayStats({
+        calories: dailyLog.totalCalories,
+        protein: dailyLog.totalProtein,
+        carbs: dailyLog.totalCarbs,
+        fat: dailyLog.totalFat,
+      });
     } catch (error) {
       console.error('Failed to load today data:', error);
     }

@@ -11,13 +11,16 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!isLoading) {
-      if (!isAuthenticated) {
-        router.replace('/auth/welcome');
-      } else if (user && !user.onboardingCompleted) {
-        router.replace('/auth/onboarding');
-      } else if (user && user.onboardingCompleted) {
-        router.replace('/(tabs)');
-      }
+      // Defer navigation to the next event loop cycle to ensure router is mounted
+      setTimeout(() => {
+        if (!isAuthenticated) {
+          router.replace('/auth/welcome');
+        } else if (user && !user.onboardingCompleted) {
+          router.replace('/auth/onboarding');
+        } else if (user && user.onboardingCompleted) {
+          router.replace('/(tabs)');
+        }
+      }, 0);
     }
   }, [isAuthenticated, user, isLoading]);
 
